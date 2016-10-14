@@ -23,16 +23,17 @@ template <int Spin>
 class heisenberg_operator
 {
 public:
-  heisenberg_operator(double h, int coord_num)
+  heisenberg_operator(double _J)
     : elements_(operatorsize<Spin>::val, 0),
-      S((Spin-1.0)/2.)
+      S_((Spin-1.0)/2.),
+      J_(_J)
   {
     // Diagonal Part
     for (int t1 = 0; t1 < Spin; ++t1)
       for (int t2 = 0; t2 < Spin; ++t2)
 	{
-	  const double m1 = double(t1) - S;
-	  const double m2 = double(t2) - S;
+	  const double m1 = double(t1) - S_;
+	  const double m2 = double(t2) - S_;
 	  elements_[spin_state::c2p<Spin>(t1, t2, t1, t2)] = m1*m2;
 	}
 
@@ -40,22 +41,23 @@ public:
     for (int t1 = 0; t1 < Spin; ++t1)
       for (int t2 = 0; t2 < Spin; ++t2)
 	{
-	  const double m1 = double(t1) - S;
-	  const double m2 = double(t2) - S;
+	  const double m1 = double(t1) - S_;
+	  const double m2 = double(t2) - S_;
 	  if ((t1 < (Spin - 1)) && (t2 > 0))
 	    {
-	      const double coeff = -std::sqrt( (S*(S+1) - m1*(m1+1)) * (S*(S+1) - m2*(m2-1)) ) / 2.;
+	      const double coeff = -std::sqrt( (S_*(S_+1) - m1*(m1+1)) * (S_*(S_+1) - m2*(m2-1)) ) / 2.;
 	      // std::cout << t1 << " " << t2 << " " << t1+1 << " " << t2-1  << " " << coeff << std::endl;
 	      elements_[spin_state::c2p<Spin>(t1, t2, t1+1, t2-1)] = coeff;
 	    }
 	  if ((t2 < (Spin - 1)) && (t1 > 0))
 	    {
-	      const double coeff = -std::sqrt( (S*(S+1) - m1*(m1-1)) * (S*(S+1) - m2*(m2+1)) ) / 2.;
+	      const double coeff = -std::sqrt( (S_*(S_+1) - m1*(m1-1)) * (S_*(S_+1) - m2*(m2+1)) ) / 2.;
 	      // std::cout << t1 << " " << t2 << " " << t1-1 << " " << t2+1  << " " << coeff << std::endl;
 	      elements_[spin_state::c2p<Spin>(t1, t2, t1-1, t2+1)] = coeff; 
 	    }
 	}
   }
+  inline double coupling() const { return J_; }
   
   double operator()(int s) const { return elements_[s]; }
   double operator()(int sp0, int sp1, int sn0, int sn1) const
@@ -82,9 +84,9 @@ public:
   }
     
 private:
-  const double S;
   std::vector<double> elements_;
-
+  const double S_;
+  const double J_;
 };
 
 // template <>

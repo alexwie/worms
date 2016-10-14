@@ -14,7 +14,7 @@
 // #define DEBUG 1
 
 // put 2S+1 here
-#define SPIN 5
+#define SPIN 4
 
 #ifdef DEBUG
 # define CHECK_OPERATORS 1
@@ -31,6 +31,7 @@
 #include "bcl.hpp"
 
 #include <vector>
+#include <complex>
 #include <fstream>
 #include <boost/random.hpp>
 #include <boost/timer.hpp>
@@ -41,6 +42,11 @@ inline int raise_ahead(int raise_lower, int direc){
   return (~(raise_lower^direc))&1;
 }
 
+typedef std::complex<double> complex;
+const double pi = std::acos(-1);
+const double S = (SPIN-1.0)/2.;
+
+
 int main(int argc, char* argv[]) {
   std::cerr << "worms: a simple worm code (release " WORMS_VERSION ")\n"
             << "  Copyright (C) 2013-2014 by Synge Todo <wistaria@comp-phys.org>\n"
@@ -49,6 +55,8 @@ int main(int argc, char* argv[]) {
   if (!opt.valid) std::exit(-1);
   double beta = 1 / opt.T;
 
+  std::cout << std::endl << "Spin " << SPIN << std::endl;
+  
   // lattice
   chain_lattice lattice(opt.L);
   
@@ -64,14 +72,17 @@ int main(int argc, char* argv[]) {
   bcl::observable umag; // uniform magnetization
   bcl::observable umag2; // uniform magnetization^2
   bcl::observable smag2; // staggered magnetizetion^2
-
+  bcl::observable twist_real;
+  bcl::observable twist_imag;
+  
   // configuration
   std::vector<int> spins(opt.L, 0 /* all down */);
   std::vector<bond_operator<SPIN> > operators, operators_p;
   std::vector<spacetime_point> stpoints;
 
   // Hamiltonian operator
-  heisenberg_operator<SPIN> op(opt.H, /* coordination number = */ 2);
+  double J = 1;
+  heisenberg_operator<SPIN> op(J);
   double offset = 0.3; // >= 0
   weight<SPIN> wt(op, offset);
   
@@ -197,7 +208,7 @@ int main(int argc, char* argv[]) {
 
 	  double random = random01();
 
-          if (random < accept[u])
+          if (random < accept[u]) // Diagonal Operator needs accept(u)
             append_operator(s0, s1, spin_state::u2p<SPIN>(u, u), *tmi, operators, stpoints);
         }
         ++tmi;
@@ -317,9 +328,16 @@ int main(int argc, char* argv[]) {
       double mu = 0;
       double ms = 0;
       for (int s = 0; s < opt.L; ++s) {
-        mu += 0.5 - spins[s];
-        ms += lattice.phase(s) * (0.5 - spins[s]);
+        mu += S - spins[s];
+        ms += lattice.phase(s) * (S - spins[s]);
       }
+      complex twist = 0;
+      double twist_sum = 0;
+      for (int s = 0; s < opt.L; ++s) 
+        twist_sum += s*(S - spins[s]);
+      twist = std::exp(complex(0., 1.)*2.*pi*twist_sum/double(opt.L)); 
+      twist_real << std::real(twist);
+      twist_imag << std::imag(twist);
       mu /= opt.L;
       ms /= opt.L;
       umag << mu;
@@ -349,5 +367,9 @@ int main(int argc, char* argv[]) {
             << "Uniform Magnetization^2   = "
             << umag2.mean() << " +- " << umag2.error() << std::endl
             << "Staggered Magnetization^2 = "
-            << smag2.mean() << " +- " << smag2.error() << std::endl;
+            << smag2.mean() << " +- " << smag2.error() << std::endl
+	    << "Twist = ("
+	    << twist_real.mean() << ", " <<  twist_imag.mean() << ") +- ("
+	    << twist_real.error() << ", " <<  twist_imag.error() << ")" << std::endl;
+  
 }
